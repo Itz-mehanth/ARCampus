@@ -6,7 +6,9 @@ import * as THREE from "three"
 import { useThree } from "@react-three/fiber"
 import { clone } from "three/examples/jsm/utils/SkeletonUtils.js"
 
-const WORLD_ORIGIN = [12.7489708, 80.1988392]
+const defaultLat = parseFloat(import.meta.env.VITE_DEFAULT_LAT)
+const defaultLon = parseFloat(import.meta.env.VITE_DEFAULT_LON)
+const WORLD_ORIGIN = [defaultLat, defaultLon]
 
 const store = createXRStore()
 const earthRadius = 6371000 // meters
