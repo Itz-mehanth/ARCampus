@@ -4,7 +4,9 @@ import { Billboard, Text, useGLTF } from "@react-three/drei"
 import { Canvas } from "@react-three/fiber"
 import * as THREE from "three"
 import { useThree } from "@react-three/fiber"
+import { clone } from "three/examples/jsm/utils/SkeletonUtils.js"
 
+const WORLD_ORIGIN = [12.7489708, 80.1988392]
 
 const store = createXRStore()
 const earthRadius = 6371000 // meters
@@ -60,8 +62,12 @@ function Button(props) {
 }
 
 function MonkModel(props) {
-  const { scene } = useGLTF("/monk_character.glb")
-  return <primitive object={scene} scale={1} {...props} />
+  const { scene } = useGLTF("/monk.glb")
+
+  // ✅ Deep clone to allow multiple independent instances
+  const clonedScene = React.useMemo(() => clone(scene), [scene])
+
+  return <primitive object={clonedScene} {...props} />
 }
 
 function useDeviceHeading() {
@@ -78,6 +84,8 @@ function useDeviceHeading() {
 
       if (compass !== undefined && initialHeading === null) {
         setInitialHeading(compass)
+        alert(`Initial heading captured: ${compass}°`)
+        alert("scene rotated: " + -THREE.MathUtils.degToRad(compass || 0))
 
         // ✅ remove listeners after capturing once
         window.removeEventListener("deviceorientationabsolute", handleOrientation, true)
@@ -139,9 +147,14 @@ export default function App() {
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const { latitude, longitude } = pos.coords
+        alert(`Current position: ${latitude}, ${longitude}`)
         setOrigin([latitude, longitude])
-        setObjects([
+         setObjects([
+          { lat: latitude, lon: longitude, type: "user" }, // 👈 user's own marker
           { lat: latitude + 0.00005, lon: longitude, type: "monk" },
+          { lat: latitude + 0.0001, lon: longitude + 0.0001, type: "monk" },
+          { lat: latitude + 0.00001, lon: longitude + 0.00001, type: "monk" },
+          { lat: latitude + 0.00002, lon: longitude + 0.00002, type: "monk" },
           { lat: latitude, lon: longitude + 0.00005, type: "button" }
         ])
       },
@@ -184,20 +197,33 @@ export default function App() {
           {/* Apply rotation based on initial heading */}
           <group rotation={[0, -THREE.MathUtils.degToRad(initialHeading || 0), 0]}>
   
-            <AxisHelper size={2} />
+            <AxisHelper position={latLonToOffset(WORLD_ORIGIN[0], WORLD_ORIGIN[1], WORLD_ORIGIN[0], WORLD_ORIGIN[1])} size={2} />
 
             {objects.map((obj, i) => {
-              const [x, y, z] = latLonToOffset(origin[0], origin[1], obj.lat, obj.lon)
-              return obj.type === "monk" ? (
-                <group key={i} position={[x, y, z]}>
-                  <Billboard scale={0.2} position={[0, 1.5, 0]}>
-                    <Text>{x}, {y}, {z}</Text>
-                  </Billboard>
-                  <MonkModel/>
-                </group>
-              ) : (
-                <Button key={i} position={[x, y, z]} />
-              )
+              // ✅ Now offsets are always relative to WORLD_ORIGIN
+              const [x, y, z] = latLonToOffset(WORLD_ORIGIN[0], WORLD_ORIGIN[1], obj.lat, obj.lon)
+
+              if (obj.type === "monk") {
+                return (
+                  <group key={i} position={[x, y, z]}>
+                    <Billboard scale={0.2} position={[0, 1.5, 0]}>
+                      <Text>{x.toFixed(1)}, {y}, {z.toFixed(1)}</Text>
+                    </Billboard>
+                    <MonkModel scale={0.015} />
+                  </group>
+                )
+              }
+
+              if (obj.type === "user") {
+                return (
+                  <mesh key={i} position={[x, y, z]}>
+                    <sphereGeometry args={[0.2, 16, 16]} />
+                    <meshBasicMaterial color="yellow" />
+                  </mesh>
+                )
+              }
+
+              return <Button key={i} position={[x, y, z]} />
             })}
           </group>
         </XR>
