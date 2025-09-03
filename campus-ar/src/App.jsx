@@ -163,6 +163,10 @@ export default function App() {
       (err) => console.error(err),
       { enableHighAccuracy: true }
     )
+
+    const defaultLat = parseFloat(import.meta.env.VITE_DEFAULT_LAT)
+    const defaultLon = parseFloat(import.meta.env.VITE_DEFAULT_LON)
+    console.log("Using default location:", defaultLat, defaultLon)
   }, [])
 
   // Capture initial heading once
